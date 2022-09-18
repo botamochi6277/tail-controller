@@ -16,6 +16,7 @@
 #include <Arduino.h>
 #include <Servo.h>
 #include "signal.hpp"
+#include "LSM6DS3.h"
 
 enum DIRECTION
 {
@@ -106,6 +107,43 @@ void Tail::attachPin(int pin_h, int pin_v)
 {
     initServo(this->servo_h_, pin_h);
     initServo(this->servo_v_, pin_v);
+}
+
+class MyImu
+{
+private:
+    LSM6DS3 device_;
+    float acc_x_;
+    float acc_y_;
+    float acc_z_;
+    float gyro_x_;
+    float gyro_y_;
+    float gyro_z_;
+
+public:
+    MyImu(uint8_t bus_type, uint8_t address);
+    inline float getAccX() { return acc_x_; }
+    inline float getAccY() { return acc_y_; }
+    inline float getAccZ() { return acc_z_; }
+    inline float getGyroX() { return gyro_x_; }
+    inline float getGyroY() { return gyro_y_; }
+    inline float getGyroZ() { return gyro_z_; }
+
+    void update();
+};
+
+MyImu::MyImu(uint8_t bus_type, uint8_t address) : device_(bus_type, address)
+{
+}
+
+void MyImu::update()
+{
+    acc_x_ = device_.readFloatAccelX(); // g
+    acc_y_ = device_.readFloatAccelY();
+    acc_z_ = device_.readFloatAccelZ();
+    gyro_x_ = device_.readFloatGyroX(); // deg/sec
+    gyro_y_ = device_.readFloatGyroY(); // deg/sec
+    gyro_z_ = device_.readFloatGyroZ(); // deg/sec
 }
 
 int average(int *values, int length)
