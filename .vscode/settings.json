@@ -1,0 +1,8 @@
+{
+    "files.associations": {
+        "mstd_mutex": "cpp",
+        "*.x": "cpp",
+        "atomic": "cpp",
+        "cstdint": "cpp"
+    }
+}
