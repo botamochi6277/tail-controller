@@ -37,11 +37,15 @@ void bleSetup() {
     return;
   }
   Serial.print("Peripheral address: ");
-  Serial.println(BLE.address());
+  String ble_address = BLE.address();
+  Serial.println(ble_address);
+
+  String localname = "SpermWhale_";
+  localname += ble_address;
 
   // set advertised local name and service UUID:
   BLE.setDeviceName("HackaTail");
-  BLE.setLocalName("SpermWhale");
+  BLE.setLocalName(localname.c_str());
   BLE.setAdvertisedService(tail_service);
 
   tail_service.addCharacteristic(timer_characteristic);
@@ -82,6 +86,8 @@ void setup() {
   Tasks.add("tail", [] { tail.update(100); })->startFps(10);
   Tasks.add("ble", [&] { bleTask(); })->startFps(100);
   Tasks.add("event", [] { SwingEventTask(); })->startFps(100);
+  Tasks.add("heatbeat", [] { digitalWrite(LEDB, !digitalRead(LEDB)); })
+      ->startFps(1);
 
   delay(3000);
 }
