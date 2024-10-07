@@ -1,6 +1,5 @@
 #include <Arduino.h>
 #include <ArduinoBLE.h>
-#include <LSM6DS3.h>
 #include <TaskManager.h>
 #include <Wire.h>
 
@@ -11,8 +10,14 @@
 botalab::Tail tail;
 #ifdef TARGET_LIKE_MBED
 arduino::UART my_serial(7, 8);
-#endif
+
 botalab::Imu my_imu(I2C_MODE, 0x6A);  // I2C device address 0x6A
+
+#elif defined(ARDUINO_M5Stack_ATOM)
+
+botalab::Imu my_imu(25, 21);  // sda, scl
+
+#endif
 int imu_freq = 10;
 
 botalab::TailService tail_service;
