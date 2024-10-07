@@ -5,24 +5,17 @@
 #include <Wire.h>
 
 #include "MiscUtils.hpp"
-#include "tail_util.hpp"
-Tail tail;
+#include "SensorUtils.hpp"
+#include "TailService.hpp"
+#include "TailUtils.hpp"
+botalab::Tail tail;
 #ifdef TARGET_LIKE_MBED
 arduino::UART my_serial(7, 8);
 #endif
-MyImu my_imu(I2C_MODE, 0x6A);  // I2C device address 0x6A
+botalab::Imu my_imu(I2C_MODE, 0x6A);  // I2C device address 0x6A
 int imu_freq = 10;
 
-// BLE Variables
-BLEService tail_service("70882CA0-6C07-426C-93F8-5C9483D06360");
-// clock Characteristic
-BLEUnsignedLongCharacteristic timer_characteristic(
-    "70882CA1-6C07-426C-93F8-5C9483D06360", BLERead | BLENotify);
-BLEDescriptor timer_descriptor("2901", "timer_ms");
-
-BLEUnsignedShortCharacteristic command_characteristic(
-    "70882CA2-6C07-426C-93F8-5C9483D06360", BLERead | BLEWrite);
-BLEDescriptor cmd_descriptor("2901", "command");
+botalab::TailService tail_service;
 
 unsigned int wait_time = 10;
 
@@ -30,7 +23,6 @@ unsigned long clock_ms;
 unsigned short cmd = 0;
 bool cmd_written = false;
 
-void bleTask();
 void SwingEventTask();
 void bleSetup() {
   if (!BLE.begin()) {
@@ -48,15 +40,7 @@ void bleSetup() {
   BLE.setDeviceName("HackaTail");
   BLE.setLocalName(localname.c_str());
   BLE.setAdvertisedService(tail_service);
-
-  tail_service.addCharacteristic(timer_characteristic);
-  timer_characteristic.addDescriptor(timer_descriptor);
-
-  tail_service.addCharacteristic(command_characteristic);
-  command_characteristic.addDescriptor(cmd_descriptor);
-
   BLE.addService(tail_service);
-
   BLE.advertise();
 }
 
@@ -93,7 +77,7 @@ void setup() {
 
   Tasks.add("imu_task", [] { my_imu.update(); })->startFps(100);
   // Tasks.add("tail", [] { tail.update(100); })->startFps(10);
-  Tasks.add("ble", [&] { bleTask(); })->startFps(100);
+  Tasks.add("ble", [&] { tail_service.update(); })->startFps(100);
   Tasks.add("event", [] { SwingEventTask(); })->startFps(100);
 #if defined(LEDB)
   Tasks.add("heartbeat", [] { digitalWrite(LEDB, !digitalRead(LEDB)); })
@@ -106,16 +90,6 @@ void setup() {
 void loop() {
   clock_ms = millis();
   Tasks.update();  // automatically execute tasks
-}
-
-void bleTask() {
-  // poll for Bluetooth® Low Energy events
-  BLE.poll();
-  timer_characteristic.writeValueLE(clock_ms);
-  if (command_characteristic.written()) {
-    cmd = command_characteristic.valueLE();
-    cmd_written = true;
-  }
 }
 
 void SwingEventTask() {
