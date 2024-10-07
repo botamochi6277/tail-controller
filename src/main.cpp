@@ -28,7 +28,6 @@ unsigned long clock_ms;
 unsigned short cmd = 0;
 bool cmd_written = false;
 
-void SwingEventTask();
 void bleSetup() {
   if (!BLE.begin()) {
     Serial.println("starting BLE failed!");
@@ -56,7 +55,7 @@ void setup() {
   botalab::init_xiao_nrf52840_builtin_led();
 #endif
 
-  Serial.begin(9600);
+  Serial.begin(115200);
   if (my_imu.begin() != 0) {
     Serial.println("IMU Device error");
 #if defined(LEDR)
@@ -72,8 +71,12 @@ void setup() {
   tail.init(&my_serial);
 #else
   // HardwareSerial
-  Serial1.begin(1000000, SERIAL_8N1, 7, 8);
+  Serial1.begin(1000000, SERIAL_8N1, 26, 32);
   tail.init(&Serial1);
+  if (Serial1) {
+    Serial.printf("Serial1(%d, %d) is ready\n\r", 26, 32);
+  }
+
 #endif
 
   tail.attachServoIds(5, 6);
@@ -82,47 +85,29 @@ void setup() {
 
   Tasks.add("imu_task", [] { my_imu.update(); })->startFps(100);
   // Tasks.add("tail", [] { tail.update(100); })->startFps(10);
-  Tasks.add("ble", [&] { tail_service.update(); })->startFps(100);
-  Tasks.add("event", [] { SwingEventTask(); })->startFps(100);
+  Tasks
+      .add("ble",
+           [&] {
+             tail_service.update();
+             if (tail_service.command_chr.written()) {
+               cmd = tail_service.command_chr.read();
+             } else {
+               cmd = 0;
+             }
+           })
+      ->startFps(100);
+  Tasks.add("event", [] { tail.update(cmd, my_imu.accSqrt() > 2.0f * 9.81f); })
+      ->startFps(10);
 #if defined(LEDB)
   Tasks.add("heartbeat", [] { digitalWrite(LEDB, !digitalRead(LEDB)); })
       ->startFps(1);
 #endif
-
+  tail.beginSwing(0, 0, 1000);  // back to idling position
+  Serial.println("setup was completed");
   delay(3000);
 }
 
 void loop() {
   clock_ms = millis();
   Tasks.update();  // automatically execute tasks
-}
-
-void SwingEventTask() {
-  if (cmd_written) {
-    // manual tail swing
-
-    switch (cmd) {
-      case 0x01:
-        tail.beginSwing(90, 0, 500);
-        break;
-      case 0x02:
-        tail.beginSwing(-90, 0, 500);
-        break;
-      case 0x03:
-        tail.beginSwing(0, 90, 500);
-        break;
-      case 0x04:
-        tail.beginSwing(0, -90, 500);
-        break;
-
-      default:
-        break;
-    }
-    cmd_written = false;
-  }
-  if (tail.isSwinging() == false) {
-    if (my_imu.accSqrt() > 2.0f) {
-      tail.beginRandomSwing();
-    }
-  }
 }

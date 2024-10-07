@@ -66,12 +66,12 @@ bool Imu::begin() {
 
 void Imu::update() {
 #ifdef __LSM6DS3IMU_H__
-  acc_x_ = device_.readFloatAccelX();  // g
-  acc_y_ = device_.readFloatAccelY();
-  acc_z_ = device_.readFloatAccelZ();
-  gyro_x_ = device_.readFloatGyroX();  // deg/sec
-  gyro_y_ = device_.readFloatGyroY();  // deg/sec
-  gyro_z_ = device_.readFloatGyroZ();  // deg/sec
+  acc_x_ = device_.readFloatAccelX() / 9.81f;  // g ->  m/s^2
+  acc_y_ = device_.readFloatAccelY() / 9.81f;
+  acc_z_ = device_.readFloatAccelZ() / 9.81f;
+  gyro_x_ = device_.readFloatGyroX() / (3.14f / 180.0f);  // deg/sec
+  gyro_y_ = device_.readFloatGyroY() / (3.14f / 180.0f);  // deg/sec
+  gyro_z_ = device_.readFloatGyroZ() / (3.14f / 180.0f);  // deg/sec
 #elif defined(ARDUINO_M5Stack_ATOM)
   sensors_event_t a, g, temp;
   if (this->device_.getEvent(&a, &g, &temp)) {

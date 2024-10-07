@@ -46,8 +46,9 @@ class Tail {
   void attachServoIds(int id_h, int id_v);
   void beginSwing(int amp_h, int amp_v, int speed);
   void beginRandomSwing();
-  void update(int step);
-  bool inline isSwinging() { return this->is_swinging_; }
+  // nerve firing
+  bool update(uint8_t cmd, bool is_fired);  // update state
+  bool isSwinging();
   int inline angleH() { return this->angle_h_; }
   int inline angleV() { return this->angle_v_; }
 };
@@ -87,6 +88,39 @@ void Tail::beginRandomSwing() {
   this->beginSwing(m_h, m_v, speed);
 }
 
+bool Tail::isSwinging() {
+  return this->servo_driver_.isMoving(servo_h_id_) |
+         this->servo_driver_.isMoving(servo_v_id_);
+}
+
+bool Tail::update(uint8_t cmd, bool is_fired) {
+  switch (cmd) {
+    case 0x01:
+      this->beginSwing(90, 0, 500);
+      break;
+    case 0x02:
+      this->beginSwing(-90, 0, 500);
+      break;
+    case 0x03:
+      this->beginSwing(0, 90, 500);
+      break;
+    case 0x04:
+      this->beginSwing(0, -90, 500);
+      break;
+
+    default:
+      break;
+  }
+
+  if (!this->isSwinging() && is_fired) {
+    this->beginRandomSwing();
+  }
+
+  // TODO: whim swinging
+
+  return this->isSwinging();
+}
+
 int average(int *values, int length) {
   int sum = 0;
   for (int i = 0; i < length; i++) {
@@ -101,5 +135,8 @@ void pushBack(int *values, int length, int new_value) {
   }
   values[0] = new_value;
 }
+
+// TODO: microphone
+
 }  // namespace botalab
 #endif
