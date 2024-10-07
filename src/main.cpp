@@ -1,14 +1,15 @@
 #include <Arduino.h>
 #include <ArduinoBLE.h>
 #include <LSM6DS3.h>
-#include <Servo.h>
 #include <TaskManager.h>
 #include <Wire.h>
 
+#include "MiscUtils.hpp"
 #include "tail_util.hpp"
-
 Tail tail;
-
+#ifdef TARGET_LIKE_MBED
+arduino::UART my_serial(7, 8);
+#endif
 MyImu my_imu(I2C_MODE, 0x6A);  // I2C device address 0x6A
 int imu_freq = 10;
 
@@ -61,33 +62,43 @@ void bleSetup() {
 
 void setup() {
   // put your setup code here, to run once:
-  // build-in leds
-  pinMode(LEDR, OUTPUT);
-  pinMode(LEDG, OUTPUT);
-  pinMode(LEDB, OUTPUT);
-  // turn off the all build-in leds
-  digitalWrite(LEDR, HIGH);
-  digitalWrite(LEDG, HIGH);
-  digitalWrite(LEDB, HIGH);
+
+#if defined(LEDR)
+  botalab::init_xiao_nrf52840_builtin_led();
+#endif
 
   Serial.begin(9600);
   if (my_imu.begin() != 0) {
     Serial.println("IMU Device error");
+#if defined(LEDR)
     digitalWrite(LEDR, LOW);
+#endif
   } else {
     Serial.println("IMU Device OK!");
   }
 
-  tail.attachPin(4, 5);
+  // serial for servos
+
+#ifdef TARGET_LIKE_MBED
+  tail.init(&my_serial);
+#else
+  // HardwareSerial
+  Serial1.begin(1000000, SERIAL_8N1, 7, 8);
+  tail.init(&Serial1);
+#endif
+
+  tail.attachServoIds(5, 6);
 
   bleSetup();
 
   Tasks.add("imu_task", [] { my_imu.update(); })->startFps(100);
-  Tasks.add("tail", [] { tail.update(100); })->startFps(10);
+  // Tasks.add("tail", [] { tail.update(100); })->startFps(10);
   Tasks.add("ble", [&] { bleTask(); })->startFps(100);
   Tasks.add("event", [] { SwingEventTask(); })->startFps(100);
-  Tasks.add("heatbeat", [] { digitalWrite(LEDB, !digitalRead(LEDB)); })
+#if defined(LEDB)
+  Tasks.add("heartbeat", [] { digitalWrite(LEDB, !digitalRead(LEDB)); })
       ->startFps(1);
+#endif
 
   delay(3000);
 }
@@ -113,16 +124,16 @@ void SwingEventTask() {
 
     switch (cmd) {
       case 0x01:
-        tail.beginSwing(90, 0, 3000, 0);
+        tail.beginSwing(90, 0, 500);
         break;
       case 0x02:
-        tail.beginSwing(-90, 0, 3000, 0);
+        tail.beginSwing(-90, 0, 500);
         break;
       case 0x03:
-        tail.beginSwing(0, 90, 3000, 0);
+        tail.beginSwing(0, 90, 500);
         break;
       case 0x04:
-        tail.beginSwing(0, -90, 3000, 0);
+        tail.beginSwing(0, -90, 500);
         break;
 
       default:

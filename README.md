@@ -2,16 +2,26 @@
 
 Hacka-Tail with Seeeduino Studio XIAO BLE Sense
 
-## mic library
-
-https://github.com/Seeed-Studio/Seeed_Arduino_Mic
-
 ## Flow
 
 ```mermaid
 graph TD
 
-imu.update-->tail.update
+subgraph setup
+
+init_servo-->init_state
+
+
+end
+
+subgraph loop
+
+read_ble-->read_imu-->update_state-->tail.update
+
+end
+
+setup-->loop
+
 
 ```
 
@@ -24,3 +34,7 @@ state:
 action:
 
 - swing tail up/down/left/right
+
+## Notes
+
+- mic library: https://github.com/Seeed-Studio/Seeed_Arduino_Mic

@@ -10,42 +10,43 @@
  *
  */
 
-#ifndef TAIL_UTIL
-#define TAIL_UTIL
+#ifndef TAIL_UTILS_HPP
+#define TAIL_UTILS_HPP
 
 #include <Arduino.h>
-#include <Servo.h>
+#include <LSM6DS3.h>
+#include <STSServoDriver.h>
 
-#include "LSM6DS3.h"
 #include "signal.hpp"
 
 enum DIRECTION { UP, DOWN, RIGHT, LEFT };
 
-void initServo(Servo &servo, int pin) {
-  servo.attach(pin, 600, 2400);
-  servo.write(90);  // rotate to initial orientation
+unsigned int degToByteAngle(int angle_deg) {
+  return map(angle_deg, -180, 180, 0, 4095);
 }
 
 class Tail {
  private:
-  Servo servo_h_;
-  Servo servo_v_;
-  int angle_h_;
-  int angle_v_;
+  STSServoDriver servo_driver_;
+  byte servo_h_id_;
+  byte servo_v_id_;
+  int angle_h_;  // cache
+  int angle_v_;  // cache
   int amp_h_ = 60;
   int amp_v_ = 0;
   int duration_ = 5000;  // msec
   int elapsed_time_ = 0;
-  bool is_swingwing_ = false;
+  bool is_swinging_ = false;
 
  public:
   Tail(/* args */);
   ~Tail();
-  void attachPin(int pin_h, int pin_v);
-  void beginSwing(int amp_h, int amp_v, int duration, int ease = 0);
+  bool init(HardwareSerial *serialPort);
+  void attachServoIds(int id_h, int id_v);
+  void beginSwing(int amp_h, int amp_v, int speed);
   void beginRandomSwing();
   void update(int step);
-  bool inline isSwinging() { return this->is_swingwing_; }
+  bool inline isSwinging() { return this->is_swinging_; }
   int inline angleH() { return this->angle_h_; }
   int inline angleV() { return this->angle_v_; }
 };
@@ -54,48 +55,35 @@ Tail::Tail(/* args */) {}
 
 Tail::~Tail() {}
 
-void Tail::beginSwing(int amp_h, int amp_v, int duration, int ease) {
-  this->amp_h_ = amp_h;
-  this->amp_v_ = amp_v;
-  this->duration_ = duration;
-  this->elapsed_time_ = 0;
-  this->is_swingwing_ = true;
+bool Tail::init(HardwareSerial *serialPort) {
+  return servo_driver_.init(serialPort);
+}
+
+void Tail::attachServoIds(int id_h, int id_v) {
+  servo_h_id_ = id_h;
+  servo_v_id_ = id_v;
+}
+
+void Tail::beginSwing(int amp_h, int amp_v, int speed) {
+  if (!servo_driver_.isMoving(servo_h_id_)) {
+    servo_driver_.setTargetPosition(servo_h_id_, degToByteAngle(amp_h), speed);
+  }
+
+  if (!servo_driver_.isMoving(servo_v_id_)) {
+    servo_driver_.setTargetPosition(servo_v_id_, degToByteAngle(amp_v), speed);
+  }
 }
 
 void Tail::beginRandomSwing() {
-  int m = random(60, 80);
-  float angle = random(0, 360) * PI / 180.0f;
-  int h = m * cos(angle);
-  int v = m * sin(angle);
+  int min_amp = 60;
+  int max_amp = 90;
+  int m_h = random(min_amp, max_amp);
+  int m_v = random(min_amp, max_amp);
 
-  int t = random(2000, 3000);
-  this->beginSwing(h, v, t);
-}
-
-void Tail::update(int step) {
-  if (this->is_swingwing_) {
-    this->elapsed_time_ += step;
-    this->angle_h_ = 90 + TrianglePulse(elapsed_time_, int(0.5 * duration_),
-                                        this->amp_h_, duration_);
-    this->angle_v_ = 90 + TrianglePulse(elapsed_time_, int(0.5 * duration_),
-                                        this->amp_v_, duration_);
-    this->servo_h_.write(this->angle_h_);
-    this->servo_v_.write(this->angle_v_);
-  }
-
-  if ((this->elapsed_time_ > this->duration_) && this->is_swingwing_) {
-    Serial.print(this->elapsed_time_);
-    Serial.println(" : finish swinging");
-    this->servo_h_.write(90);
-    this->servo_v_.write(90);
-    this->is_swingwing_ = false;
-    this->elapsed_time_ = 0;
-  }
-}
-
-void Tail::attachPin(int pin_h, int pin_v) {
-  initServo(this->servo_h_, pin_h);
-  initServo(this->servo_v_, pin_v);
+  int min_speed = 500;
+  int max_speed = 1000;
+  int speed = random(min_speed, max_speed);
+  this->beginSwing(m_h, m_v, speed);
 }
 
 class MyImu {
