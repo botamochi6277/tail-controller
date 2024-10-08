@@ -1,6 +1,11 @@
 #ifndef MISC_UTILS_CPP
 #define MISC_UTILS_CPP
 #include <Arduino.h>
+
+#if defined(ARDUINO_M5Stack_ATOM)
+#include <FastLED.h>
+#endif
+
 namespace botalab {
 
 #if defined(LEDR)

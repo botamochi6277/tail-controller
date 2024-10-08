@@ -79,8 +79,9 @@ void Tail::beginSwing(int amp_h, int amp_v, int speed) {
 void Tail::beginRandomSwing() {
   int min_amp = 60;
   int max_amp = 90;
-  int m_h = random(min_amp, max_amp);
-  int m_v = random(min_amp, max_amp);
+  // -90 -- -60, 60 -- 90
+  int m_h = random(-max_amp, max_amp);
+  int m_v = random(-max_amp, max_amp);
 
   int min_speed = 500;
   int max_speed = 1000;

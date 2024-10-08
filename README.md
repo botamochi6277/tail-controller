@@ -1,5 +1,7 @@
 # Tail controller
 
+Arduino codes for Tail controller in [Hacka-Tail](https://protopedia.net/prototype/3929)
+
 ## Control Flow
 
 ```mermaid
@@ -22,12 +24,6 @@ setup-->loop
 
 
 ```
-
-state:
-
-- stroke hard
-- stroke soft
-- ble command
 
 action:
 

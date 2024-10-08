@@ -4,6 +4,28 @@
 
 namespace botalab {
 
+bool setupBle(BLEService &service) {
+  if (!BLE.begin()) {
+    Serial.println("starting BLE failed!");
+    return false;
+  }
+  Serial.print("Peripheral address: ");
+  String ble_address = BLE.address();
+  Serial.println(ble_address);
+
+  String localname = "SpermWhale_";
+  localname += ble_address;
+
+  // set advertised local name and service UUID:
+  BLE.setDeviceName("HackaTail");
+  BLE.setLocalName(localname.c_str());
+  BLE.setAdvertisedService(service);
+  BLE.addService(service);
+  BLE.advertise();
+
+  return true;
+}
+
 class TailService : public BLEService {
  public:
   BLEUnsignedLongCharacteristic timer_chr;
